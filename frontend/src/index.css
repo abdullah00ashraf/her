@@ -1,0 +1,218 @@
+:root {
+  /* Vincent van Gogh's Starry Night & Cosmic Palette */
+  --bg-obsidian: #020617;
+  --bg-midnight: #0b132b;
+  --bg-nebula: #1c2541;
+  --accent-violet: #2d1b4e;
+
+  /* Warm Mountain Cabin Contrast */
+  --glow-amber: #ffb703;
+  --glow-gold: #fb8500;
+  --text-warm: #fefae0;
+
+  /* Typography & Contrast */
+  --text-tesla: #f8fafc;
+  --text-mist: #cbd5e1;
+  --text-muted: #64748b;
+  
+  /* Compatibility Aliases */
+  --bg-dark: var(--bg-obsidian);
+  --bg-deep-indigo: var(--bg-midnight);
+  --panel-glass: rgba(11, 19, 43, 0.45);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(251, 133, 0, 0.25);
+  
+  --color-gold: var(--glow-gold);
+  --color-amber: var(--glow-amber);
+  --color-teal: #4ea8de;
+  --color-text-primary: var(--text-tesla);
+  --color-text-secondary: var(--text-mist);
+  --color-text-muted: var(--text-muted);
+  
+  --font-serif: 'Playfair Display', serif;
+  --font-sans: 'Outfit', sans-serif;
+  
+  --shadow-glow: 0 0 15px rgba(251, 133, 0, 0.25);
+  --shadow-teal-glow: 0 0 15px rgba(78, 168, 222, 0.25);
+  
+  /* Surfaces & Containers */
+  --glass-surface: rgba(11, 19, 43, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-glow: rgba(251, 133, 0, 0.25);
+  --glass-blur: blur(20px);
+  
+  /* Box Shadow & Glow Depth */
+  --shadow-card-lift: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  --shadow-glow-amber: 0 0 15px 0 rgba(255, 183, 3, 0.35);
+  --shadow-glow-gold: 0 0 25px 0 rgba(251, 133, 0, 0.50);
+  --shadow-glow-violet: 0 0 20px 0 rgba(94, 84, 142, 0.25);
+}
+
+/* Reset & Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-glass);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-teal);
+}
+
+/* Typography */
+h1, h2, h3, .poetic-font {
+  font-family: var(--font-serif);
+}
+
+/* Glassmorphism Panel Utility */
+.glass-panel {
+  background: var(--glass-surface);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-card-lift);
+}
+
+.glass-panel-glow {
+  background: var(--glass-surface);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-glow);
+  border-radius: 20px;
+  box-shadow: var(--shadow-card-lift), var(--shadow-glow-gold);
+}
+
+/* Interactive elements */
+button, input, textarea {
+  font-family: inherit;
+  outline: none;
+}
+
+/* Floating Stars Background */
+.starry-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background: radial-gradient(circle at bottom, var(--bg-midnight) 0%, var(--bg-obsidian) 100%);
+  overflow: hidden;
+}
+
+.star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: twinkle linear infinite;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+/* Sparkle Canvas Overlay */
+.sparkle-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* Premium Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(78, 168, 222, 0.2);
+    border-color: rgba(78, 168, 222, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(78, 168, 222, 0.5);
+    border-color: rgba(78, 168, 222, 0.5);
+  }
+}
+
+@keyframes butterfly-hover {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(1deg); }
+}
+
+@keyframes butterfly-breathe {
+  0%, 100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 8px rgba(78, 168, 222, 0.3));
+  }
+  50% {
+    transform: translateY(-6px) scale(1.02) rotate(0.5deg);
+    filter: drop-shadow(0 0 15px rgba(78, 168, 222, 0.6));
+  }
+}
+
+@keyframes cosmic-burst-flash {
+  0% {
+    opacity: 0;
+    pointer-events: none;
+  }
+  20% {
+    opacity: 1;
+    background: radial-gradient(circle, #ffffff 0%, var(--glow-gold) 100%);
+    pointer-events: all;
+  }
+  80% {
+    opacity: 1;
+    background: #020617;
+  }
+  100% {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@keyframes ghibli-dust {
+  0% {
+    transform: translateY(100vh) translateX(0) scale(0.8);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  80% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-20vh) translateX(50px) scale(1.2);
+    opacity: 0;
+  }
+}
+
