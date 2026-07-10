@@ -1,21 +1,119 @@
+const { Pool } = require('pg');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const fs = require('fs');
 
-const dbPath = path.resolve(__dirname, 'database.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database', err.message);
-  } else {
-    console.log('Connected to the SQLite database.');
-    initializeDatabase();
+const isPostgres = !!process.env.DATABASE_URL;
+let pgPool = null;
+let sqliteDb = null;
+
+if (isPostgres) {
+  pgPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+  console.log('Connected to the cloud PostgreSQL database.');
+  initializePostgresDatabase();
+} else {
+  const dbPath = path.resolve(__dirname, 'database.db');
+  sqliteDb = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+      console.error('Error opening SQLite database', err.message);
+    } else {
+      console.log('Connected to the local SQLite database.');
+      initializeSQLiteDatabase();
+    }
+  });
+}
+
+// Convert SQLite style "?" placeholders to Postgres "$1, $2" style
+function convertQuery(text) {
+  if (!isPostgres) return text;
+  let pgText = text;
+  let count = 1;
+  while (pgText.includes('?')) {
+    pgText = pgText.replace('?', `$${count++}`);
   }
-});
+  return pgText;
+}
 
-function initializeDatabase() {
-  db.serialize(() => {
-    // Create memories table
-    db.run(`
+function query(text, params = []) {
+  return new Promise((resolve, reject) => {
+    if (isPostgres) {
+      pgPool.query(convertQuery(text), params, (err, res) => {
+        if (err) return reject(err);
+        resolve({ rows: res.rows });
+      });
+    } else {
+      sqliteDb.all(text, params, (err, rows) => {
+        if (err) return reject(err);
+        resolve({ rows });
+      });
+    }
+  });
+}
+
+function execute(text, params = []) {
+  return new Promise((resolve, reject) => {
+    if (isPostgres) {
+      pgPool.query(convertQuery(text), params, (err, res) => {
+        if (err) return reject(err);
+        resolve({ lastID: null, changes: res.rowCount });
+      });
+    } else {
+      sqliteDb.run(text, params, function(err) {
+        if (err) return reject(err);
+        resolve({ lastID: this.lastID, changes: this.changes });
+      });
+    }
+  });
+}
+
+async function initializePostgresDatabase() {
+  try {
+    await pgPool.query(`
+      CREATE TABLE IF NOT EXISTS memories (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        date TEXT NOT NULL,
+        description TEXT,
+        type TEXT NOT NULL,
+        media_url TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pgPool.query(`
+      CREATE TABLE IF NOT EXISTS countdowns (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        target_date TEXT NOT NULL,
+        is_anniversary INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pgPool.query(`
+      CREATE TABLE IF NOT EXISTS letters (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        unlock_date TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    const checkRes = await pgPool.query('SELECT COUNT(*) FROM memories');
+    if (parseInt(checkRes.rows[0].count, 10) === 0) {
+      await seedData();
+    }
+  } catch (err) {
+    console.error('Error initializing Postgres tables:', err.message);
+  }
+}
+
+function initializeSQLiteDatabase() {
+  sqliteDb.serialize(() => {
+    sqliteDb.run(`
       CREATE TABLE IF NOT EXISTS memories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -27,8 +125,7 @@ function initializeDatabase() {
       )
     `);
 
-    // Create countdowns table
-    db.run(`
+    sqliteDb.run(`
       CREATE TABLE IF NOT EXISTS countdowns (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -38,8 +135,7 @@ function initializeDatabase() {
       )
     `);
 
-    // Create letters table
-    db.run(`
+    sqliteDb.run(`
       CREATE TABLE IF NOT EXISTS letters (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -49,8 +145,7 @@ function initializeDatabase() {
       )
     `);
 
-    // Check if tables are empty before seeding
-    db.get('SELECT COUNT(*) AS count FROM memories', [], (err, row) => {
+    sqliteDb.get('SELECT COUNT(*) AS count FROM memories', [], (err, row) => {
       if (err) return console.error(err.message);
       if (row.count === 0) {
         seedData();
@@ -59,8 +154,8 @@ function initializeDatabase() {
   });
 }
 
-function seedData() {
-  console.log('Seeding initial data...');
+async function seedData() {
+  console.log('Seeding database tables...');
 
   const memories = [
     {
@@ -153,33 +248,38 @@ We have built such a beautiful world together since then. I cherish all of it—
 I often think of us escaping to some cozy mountain cabin, under a sky full of stars, far away from the rush of everything else. But until we are there, I wanted to give you this vault. You are my 🦋—bringing grace, color, and an effortless beauty to my life, even on the days I don't say it loud enough.
 
 Whenever you miss me, or whenever you just need a reminder of how completely and deeply you are loved, I want you to unlock this space. Know that no matter where we are, I am always right here.`,
-      unlock_date: '2026-07-10T00:00:00Z' // Already unlocked (today is July 10, 2026)
+      unlock_date: '2026-07-10T00:00:00Z'
     },
     {
       title: 'Open on a Rainy Day',
       content: 'If you\'re reading this, it\'s probably raining outside, or maybe it\'s just raining in your heart. Remember the day our umbrella broke? We got completely soaked but it ended up being one of the happiest days. Let this letter be your digital umbrella. Take a deep breath, make some warm tea, and remember I am always holding your hand, rain or shine.',
-      unlock_date: '2026-08-15T00:00:00Z' // Locked until August 2026
+      unlock_date: '2026-08-15T00:00:00Z'
     },
     {
       title: 'A Letter for the Future',
       content: 'Hello, darling. If you are reading this, time has passed and we have grown. Yet, I know my love for you has only deepened. This is a letter to remind us of who we were today, and the dreams we promised to chase together. I hope we are still dancing in the kitchen and laughing at things no one else understands.',
-      unlock_date: '2026-10-14T00:00:00Z' // Locked until anniversary
+      unlock_date: '2026-10-14T00:00:00Z'
     }
   ];
 
-  const stmtMem = db.prepare('INSERT INTO memories (title, date, description, type, media_url) VALUES (?, ?, ?, ?, ?)');
-  memories.forEach(m => stmtMem.run(m.title, m.date, m.description, m.type, m.media_url));
-  stmtMem.finalize();
-
-  const stmtCount = db.prepare('INSERT INTO countdowns (title, target_date, is_anniversary) VALUES (?, ?, ?)');
-  countdowns.forEach(c => stmtCount.run(c.title, c.target_date, c.is_anniversary));
-  stmtCount.finalize();
-
-  const stmtLet = db.prepare('INSERT INTO letters (title, content, unlock_date) VALUES (?, ?, ?)');
-  letters.forEach(l => stmtLet.run(l.title, l.content, l.unlock_date));
-  stmtLet.finalize();
-
-  console.log('Seed completed successfully.');
+  try {
+    for (const m of memories) {
+      await execute('INSERT INTO memories (title, date, description, type, media_url) VALUES (?, ?, ?, ?, ?)', [m.title, m.date, m.description, m.type, m.media_url]);
+    }
+    for (const c of countdowns) {
+      await execute('INSERT INTO countdowns (title, target_date, is_anniversary) VALUES (?, ?, ?)', [c.title, c.target_date, c.is_anniversary]);
+    }
+    for (const l of letters) {
+      await execute('INSERT INTO letters (title, content, unlock_date) VALUES (?, ?, ?)', [l.title, l.content, l.unlock_date]);
+    }
+    console.log('Seed completed successfully.');
+  } catch (err) {
+    console.error('Error seeding database:', err.message);
+  }
 }
 
-module.exports = db;
+module.exports = {
+  query,
+  execute,
+  isPostgres
+};

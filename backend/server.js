@@ -71,50 +71,48 @@ app.get('/api/auth/validate', authenticateToken, (req, res) => {
 });
 
 // Get memories (requires authentication)
-app.get('/api/memories', authenticateToken, (req, res) => {
-  db.all('SELECT * FROM memories ORDER BY date DESC', [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+app.get('/api/memories', authenticateToken, async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM memories ORDER BY date DESC', []);
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Create a new memory (requires authentication) - Content Management System capability
-app.post('/api/memories', authenticateToken, (req, res) => {
+app.post('/api/memories', authenticateToken, async (req, res) => {
   const { title, date, description, type, media_url } = req.body;
   if (!title || !date || !type) {
     return res.status(400).json({ error: 'Missing title, date, or type.' });
   }
 
-  const stmt = db.prepare('INSERT INTO memories (title, date, description, type, media_url) VALUES (?, ?, ?, ?, ?)');
-  stmt.run(title, date, description, type, media_url, function(err) {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.status(201).json({ id: this.lastID, title, date, description, type, media_url });
-  });
-  stmt.finalize();
+  try {
+    const result = await db.execute(
+      'INSERT INTO memories (title, date, description, type, media_url) VALUES (?, ?, ?, ?, ?)',
+      [title, date, description, type, media_url]
+    );
+    res.status(201).json({ id: result.lastID, title, date, description, type, media_url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Get countdowns (requires authentication)
-app.get('/api/countdowns', authenticateToken, (req, res) => {
-  db.all('SELECT * FROM countdowns ORDER BY target_date ASC', [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+app.get('/api/countdowns', authenticateToken, async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM countdowns ORDER BY target_date ASC', []);
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Get letters (requires authentication)
 // Secure letters endpoint: filters content of locked letters on the server side
-app.get('/api/letters', authenticateToken, (req, res) => {
-  db.all('SELECT * FROM letters ORDER BY unlock_date ASC', [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-
+app.get('/api/letters', authenticateToken, async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM letters ORDER BY unlock_date ASC', []);
     const now = new Date();
     const processedRows = rows.map(letter => {
       const unlockDate = new Date(letter.unlock_date);
@@ -130,9 +128,10 @@ app.get('/api/letters', authenticateToken, (req, res) => {
           : letter.content
       };
     });
-
     res.json(processedRows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Secure media server (requires authentication)
