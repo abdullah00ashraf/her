@@ -15,6 +15,20 @@ const LOCK_SECRET = process.env.LOCK_SECRET || 'inayaabdullah';
 app.use(cors());
 app.use(express.json());
 
+// Debug routing middleware for Vercel troubleshooting
+app.use((req, res, next) => {
+  if (req.url.includes('debug-routing')) {
+    return res.json({
+      url: req.url,
+      originalUrl: req.originalUrl,
+      method: req.method,
+      path: req.path,
+      query: req.query
+    });
+  }
+  next();
+});
+
 // Initialize media directories securely
 const mediaDirs = {
   images: path.join(__dirname, 'media', 'images'),
