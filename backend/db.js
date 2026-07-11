@@ -13,7 +13,7 @@ if (isPostgres) {
   console.log('Connected to the cloud PostgreSQL database.');
   initializePostgresDatabase();
 } else {
-  const sqlite3 = require('sqlite3').verbose();
+  const sqlite3 = eval("require('sqlite3')").verbose();
   const dbPath = path.resolve(__dirname, 'database.db');
   sqliteDb = new sqlite3.Database(dbPath, (err) => {
     if (err) {
