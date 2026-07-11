@@ -1,5 +1,3 @@
-const { Pool } = require('pg');
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 const isPostgres = !!process.env.DATABASE_URL;
@@ -7,6 +5,7 @@ let pgPool = null;
 let sqliteDb = null;
 
 if (isPostgres) {
+  const { Pool } = require('pg');
   pgPool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -14,6 +13,7 @@ if (isPostgres) {
   console.log('Connected to the cloud PostgreSQL database.');
   initializePostgresDatabase();
 } else {
+  const sqlite3 = require('sqlite3').verbose();
   const dbPath = path.resolve(__dirname, 'database.db');
   sqliteDb = new sqlite3.Database(dbPath, (err) => {
     if (err) {
